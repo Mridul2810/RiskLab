@@ -1,11 +1,19 @@
+import os
+import sys
 import pandas as pd
 import streamlit as st
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from src.config import STRESS_SCENARIOS
 
 st.set_page_config(page_title="RiskLab Dashboard", layout="wide")
 
 st.title("RiskLab: Credit Risk & Portfolio Stress Testing")
-st.write("This dashboard shows borrower risk, model performance, expected loss, and interactive stress scenario results.")
+st.write(
+    "This dashboard shows borrower risk, model performance, expected loss, "
+    "and interactive stress scenario results."
+)
 
 portfolio = pd.read_csv("results/portfolio_with_pd.csv")
 model_metrics = pd.read_csv("results/model_metrics.csv")
@@ -19,7 +27,9 @@ with col1:
     st.metric("AUC Score", f"{auc_value:.3f}")
 
 with col2:
-    default_rate = model_metrics.loc[model_metrics["Metric"] == "Default Rate", "Value"].iloc[0]
+    default_rate = model_metrics.loc[
+        model_metrics["Metric"] == "Default Rate", "Value"
+    ].iloc[0]
     st.metric("Portfolio Default Rate", f"{default_rate:.2%}")
 
 st.subheader("Portfolio Overview")
@@ -67,10 +77,16 @@ lgd_multiplier = st.slider(
 
 interactive_df = portfolio.copy()
 interactive_df["lgd"] = 0.45
-interactive_df["stressed_pd"] = (interactive_df["predicted_pd"] * pd_multiplier).clip(0, 1)
-interactive_df["stressed_lgd"] = (interactive_df["lgd"] * lgd_multiplier).clip(0, 1)
+interactive_df["stressed_pd"] = (
+    interactive_df["predicted_pd"] * pd_multiplier
+).clip(0, 1)
+interactive_df["stressed_lgd"] = (
+    interactive_df["lgd"] * lgd_multiplier
+).clip(0, 1)
 interactive_df["stressed_expected_loss"] = (
-    interactive_df["stressed_pd"] * interactive_df["stressed_lgd"] * interactive_df["loan_amount"]
+    interactive_df["stressed_pd"]
+    * interactive_df["stressed_lgd"]
+    * interactive_df["loan_amount"]
 )
 
 base_loss = portfolio["expected_loss"].sum()
@@ -83,7 +99,11 @@ with col1:
     st.metric("Scenario", scenario_name)
 
 with col2:
-    st.metric("Stressed Expected Loss", f"${stressed_loss:,.0f}", f"${loss_change:,.0f}")
+    st.metric(
+        "Stressed Expected Loss",
+        f"${stressed_loss:,.0f}",
+        f"${loss_change:,.0f}"
+    )
 
 with col3:
     stress_ratio = stressed_loss / base_loss if base_loss != 0 else 0
@@ -133,14 +153,16 @@ for col in industry_cols:
             "Average PD": subset["predicted_pd"].mean(),
             "Average Stressed PD": subset["stressed_pd"].mean(),
             "Total Expected Loss": subset["expected_loss"].sum(),
-            "Total Stressed Expected Loss": subset["stressed_expected_loss"].sum()
+            "Total Stressed Expected Loss": subset["stressed_expected_loss"].sum(),
         })
 
 industry_risk_df = pd.DataFrame(industry_risk)
 
 if not industry_risk_df.empty:
     st.dataframe(industry_risk_df, use_container_width=True)
-    st.bar_chart(industry_risk_df.set_index("Industry")["Total Stressed Expected Loss"])
+    st.bar_chart(
+        industry_risk_df.set_index("Industry")["Total Stressed Expected Loss"]
+    )
 
 st.subheader("Recent Portfolio Data")
 st.dataframe(interactive_df.head(20), use_container_width=True)
